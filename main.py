@@ -2,56 +2,60 @@ import requests
 import time
 import random
 
-# Вписуй дані ТІЛЬКИ в лапках нижче:
-NICK = "Dark Tornado"
-PASS = "12334455"
+# ДАНІ ДЛЯ ВХОДУ (Перевір їх ще раз!)
+USER_LOGIN = "Dark Tornado"
+USER_PASS = "12334455"
 
 class TiwarBot:
     def __init__(self):
         self.session = requests.Session()
-        self.url = "https://tiwar.ru"
+        # Маскуємо бота під звичайний браузер Chrome на Android
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-A505F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Mobile Safari/537.36'
+        })
+        self.base_url = "https://tiwar.ru"
 
     def login(self):
-        print(f"Connecting as: {NICK}")
-        # Ці дані не можна перекладати!
-        data = {'login': NICK, 'pass': PASS, 'ok': 'Вход'}
+        print(f"Спроба входу: {USER_LOGIN}")
+        payload = {'login': USER_LOGIN, 'pass': USER_PASS, 'ok': 'Вход'}
         try:
-            r = self.session.post(f"{self.url}/login/", data=data)
-            if "Выход" in r.text or "кабинет" in r.text:
-                print("SUCCESS: Logged in!")
+            res = self.session.post(f"{self.base_url}/login/", data=payload)
+            # Перевіряємо, чи з'явилася кнопка Вихід (це значить ми всередині)
+            if "Выход" in res.text or "cabinet" in res.text:
+                print("УСПІХ: Бот у грі!")
                 return True
-            print("ERROR: Login failed. Check Nick/Pass.")
-            return False
+            else:
+                print("ПОМИЛКА: Гра не прийняла пароль.")
+                return False
         except:
-            print("ERROR: Server unreachable.")
+            print("ПОМИЛКА: Немає зв'язку з сервером.")
             return False
 
     def play(self):
-        print("Coliseum battle...")
-        self.session.get(f"{self.url}/coliseum/")
+        print("Б'юся в Колізеї...")
+        self.session.get(f"{self.base_url}/coliseum/")
         for i in range(3):
-            self.session.get(f"{self.url}/coliseum/attack/")
-            print(f"Hit {i+1}")
-            time.sleep(random.randint(3, 5))
+            self.session.get(f"{self.base_url}/coliseum/attack/")
+            print(f"Удар {i+1}")
+            time.sleep(random.randint(3, 6))
 
     def start(self):
         if not self.login(): return
         while True:
             try:
                 self.play()
-                # Збір ресурсів
-                self.session.get(f"{self.url}/daily_rewards/")
+                # Збір нагород
+                self.session.get(f"{self.base_url}/daily_rewards/")
                 
-                wait = random.randint(600, 900)
-                print(f"Sleeping {wait // 60} min...")
+                wait = random.randint(600, 900) # 10-15 хвилин
+                print(f"Відпочинок {wait // 60} хв...")
                 time.sleep(wait)
                 
-                # Перевірка, чи ми ще в грі
-                check = self.session.get(self.url)
-                if "Вход" in check.text:
+                # Якщо вилетіли — заходимо знову
+                if "login" in self.session.get(self.base_url).url:
                     self.login()
             except Exception as e:
-                print(f"Loop error: {e}")
+                print(f"Помилка циклу: {e}")
                 time.sleep(60)
 
 if __name__ == "__main__":
